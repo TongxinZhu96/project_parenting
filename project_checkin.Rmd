@@ -7,24 +7,87 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(quiet = TRUE)
+library(readr)
+library(tidyverse)
+library(broom)
+library(tidyr)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+# import dataset
+```{r}
+parenting <- read_csv("C:/Users/74060/Desktop/final_project/parenting.csv", 
+                      col_types = cols(CHILDID = col_number(), 
+                      P2CHDBTH = col_number(), P2CHLIKE = col_number(), 
+                      P2EXPRES = col_number(), P2FLANGR = col_number(), 
+                      P2PTHARD = col_number(), P2SACRFC = col_number(), 
+                      P2SHOWLV = col_number(), P2TVRUL2 = col_number(), 
+                      P2TVRUL3 = col_number(), P2TVRULE = col_number(), 
+                      P2WARMCL = col_number(), X12PAR1ED_I = col_character(), 
+                      X1PAR1EMP = col_character(), X2INCCAT_I = col_number(), 
+                      X_CHSEX_R = col_number(), X_RACETH_R = col_character()))
+View(parenting)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+# select variables of interests: indicators of parenting practices
+```{r}
+parenting_style <- parenting %>%
+  select(P2WARMCL,P2CHLIKE,P2SHOWLV,P2EXPRES,P2PTHARD,P2CHDBTH,P2SACRFC,P2FLANGR)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# imputate missing value with column means
+```{r}
+parenting_style_imp <- replace_na(parenting_style, as.list(colMeans(parenting_style, na.rm = TRUE)))
+```
+
+# conduct principle component analysis to make the values of the variables comparable to one another, since the original variables are categorical variables that reflecting the frequency of parenting practices
+```{r}
+parenting_pca <- prcomp(parenting_style_imp)
+
+pcs_parenting <- parenting_pca %>%
+  .$x %>%
+  as_tibble()
+```
+
+# view the amount of variance explained by each principle component
+```{r}
+summary(parenting_pca)
+```
+
+# plot the distribution of first and second pc
+```{r}
+as_tibble(parenting_pca$x) %>%
+  ggplot(aes(PC1, PC2))+
+  geom_point()+
+  theme_minimal()
+```
+
+
+? questions: is it because we can only plot two principle components so we pick the two that explain most variance? Also, I don't know how to interpret the plot - seems like the two pcs are negatively correlated? But what does that tell me?
+
+# predict four clusters
+```{r}
+set.seed(20200426)
+parenting_style_kmeans <- kmeans(pcs_parenting,
+                                 centers = 4)
+
+tidy(parenting_style_kmeans) %>%
+  knitr::kable(digits = 2)
+```
+
+# visualize clusters with a scatter plot matrix
+```{r}
+library(GGally)
+bind_cols(parenting_style_imp,
+          cluster = parenting_style_kmeans$cluster) %>%
+  ggpairs(columns = 1:8,
+          mapping = aes(color = factor(cluster)),
+          diag = list(continuous = wrap("densityDiag",
+                                        alpha =0.8,
+                                        color=NA)))
+
+```
+
+? Again, I'm not sure how to interpret the results. Seems like it shows some differences in patterns acroos the four clusters. But how can I take a further analytical step? Any feedbacks and resources are highly appreciated!
