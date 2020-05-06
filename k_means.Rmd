@@ -1,0 +1,128 @@
+---
+title: "k_means"
+author: "Tongxin Zhu"
+date: "4/26/2020"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(quiet = TRUE)
+library(readr)
+library(tidyverse)
+library(broom)
+library(tidyr)
+library(factoextra)
+```
+## Introduction
+Family scholars, psychologists, and public policy makers have studied the parenting styles and its impact on children’s achievement and adjustment, as well as the long-term effect into children’s adolescence or even adulthood in the past three decades(Aunolo, Stattin, & Nurmi, 2000). The most well-known and influential typology of parenting styles consists of two dimensions: demandingness and responsiveness. It was originally a three-category typological approach developed by Diana Baumrind in 1978 (Baumrind, 1978), and was expanded later by Maccoby and Martin (Spera, 2005), and finally consolidated again (Baumrind, 1991) applying factor analyses on the previous typologies. The first dimension of this widely cited pattern, demandingness, represents the extent of parents showing parental control and supervision, while the second dimension, responsiveness, referring to parental warmth, affection and involvement. Based on that, a four-fold classification of parenting patterns – authoritative, authoritarian, indulgent and uninvolved – has been described and utilized (Spera, 2005).
+Although plenty of research has investigated the relationship between parenting styles and children’s academic performance, physical and psychological wellbeing, as well as problem behaviors, little attention has been given to the mediating effect of family structure. That is to say, whether parenting styles show different trajectories for children from two-parent families, divorced families, non-married single families, and cohabiting families. A study by Pearson et al. has found significant effect of breakfast consumption for two-parent families compared to single-parent families, with the former eating breakfast more frequently. Adolescents with self-defined authoritative parents tend to eat more fruit and fewer snacks per day, compared to those with neglectful parents (Pearson el al., 2010). This UK based study has shed some light on my research questions and given me some credibility to conduct a similar research in the US setting.
+In this paper, I will perform cluster analysis on 8,896 children from the ECLS-K:2011 sample, using indicators for the two dimensions of parenting styles that are most well-known in previous literature, demandingness (including family rules and ever spank children), and responsiveness (including spending close time with children, showing love and affection to children). I also include indicators for different levels of parent involvement (rated by child’s teacher) to help classifying parenting styles, since involvement is an important factor to classify parenting styles but not included in the DWQ(discipline and warmth) measurements of ECLS-K:2011’s parent interview (Tourangeau, 2019). Then, I will look at each cluster and describe them by their demographic statistics such as child’s sex, race, parent’s marital status, educational attainment and employment status of primary parent, and the poverty level of the household to see any interesting sub-pattern.
+
+## Data and Method
+### Data Source
+```{r}
+parenting <- read_csv("parenting.csv", col_types = cols(X2TCHCON = col_number(), 
+                                                        X2TCHEXT = col_number(),
+                                                        X2TCHINT = col_number(), 
+                                                        X2TCHPER = col_number()))
+View(parenting)
+```
+Data come from the Early Childhood Longitudinal Study, Kindergarten Class of 2010-11 (ECLS-K:2011) public-use version, a nationally representative sample of individuals selected from both public and private schools attending both full-day and part-day kindergarten in 2010-11. Children, their families, teachers, schools and care providers provided information on different domains of children’s development and wellbeing. In the base school year 2010-2011, ECLS-K:2011 drew a national sample size of 18,174 children starting from Kindergarten. Since there is a subset of children who entered into the study in the spring collection and were not part of the Fall Kindergarten sample, it’s better for me to select the Spring instead of Fall. Another reason to select Kindergarten instead of later survey waves is driven by my consideration of a larger analysis sample, therefore the probability of better generalizability. As a result, I restricted my sample to children with a related parental marriage status variable in Spring Kindergarten (2011) in my analysis and ended up with 13,481 observations instead of 18,174.
+
+### Variables
+```{r}
+parenting_style <- parenting %>%
+  select(WARMCL_ALWAYS, WARMCL_MOST, WARMCL_SOME, WARMCL_NEVER,
+         LIKE_ALWAYS, LIKE_MOST, LIKE_SOME, LIKE_NEVER,
+         SHOWLV_ALWAYS, SHOWLV_MOST, SHOWLV_SOME, SHOWLV_NEVER,
+         EXPRES_ALWAYS, EXPRES_MOST, EXPRES_SOME, EXPRES_NEVER,
+         P2TVRULE, P2TVRUL3, P2TVRUL2, P2EVSPNK,
+         T2PARIN_NOT, T2PARIN_SOME, T2PARIN_VERY, CHILDID
+         )
+```
+Twenty-four variables are used for cluster analysis, including 23 indicators used to classify parenting styles and 1 identification variable that will be used to compare the background characteristics differences between each parenting style. Indicators covers 16 indicators for responsiveness dimensions – 4 different levels of indicators for each of the 1)spending warm/close time together, 2)showing love to children even in bad mode, 3)expressing affection by hugging, kissing, and holding, and 4)perception of children like me(parent), as well as 4 binary variables for demandingness – if the parent has family rules about 1) which TV program to watch, 2)how many hours children may watch TV, 3)how early/late children may watch TV, and 4)has the parent ever spank children. Three indicators for different levels of parental involvement is also included to supplement the parent interview that didn’t cover the involvement questions originally. Parental involvement is rated by child’s teacher and believed to be more objective.
+
+Child identification is also included in order to match children to their own and family level characteristics after cluster analysis. Child-level demographic variables include categorical variable of child’s race and binary variable of child’s sex. Parent and family level characteristics include categorical variables of primary parent’s educational attainment, educational level, current marital status, as well as household’s poverty level.
+
+### Analysis Sample
+```{r}
+parenting_style_imp <- na.omit(parenting_style)
+```
+In dealing with missing values for the key parenting styles indicators, I ended up discarding the observations that contain missing data since imputation by mean, median or mode doesn’t make sense for dummy variables. Another important concern is that these missing values are Not Missing at Random (NMAR) based on my thesis analyses using the same dataset. Since the majority of the parent interviews were done through telephone or contacted in person by qualified field staff for interviews (Tourangeau, 2019), it’s unlikely that parents skipped questions unintendedly. There is a concern of social desirability bias that the parents tend not to reveal socially undesired response (Grimm, 2010)– in this case, being not responsive or too demanding to their children. Therefore, I omitted the missing values for parenting styles indicators to reduce bias of my analysis. I ended up with 8,896 observations, which is approximately two thirds of my original analysis sample, but still large enough to do cluster analysis, and large enough compared to the previous studies on parenting styles classification, which generally included less than a thousand of observations.
+
+
+
+### Clustering Analysis
+
+#### K-means Clustering
+```{r}
+parenting_scaled <- parenting_style_imp %>%
+  mutate_at(vars(-CHILDID), .funs = ~(.x - mean(.x))/sd(.x))
+```
+The statistical procedure adopted for this study is cluster analysis, which tries to classify observations into mutually exclusive groups so that the differences within the same group are as small as possible while the differences between groups are as large as possible .  Several algorithms are available for clustering, and the method used for this paper is K-mean clustering, in which k is a pre-specified number, and means referring to the mean of the observations assigned to the same cluster corresponding to the center of the cluster. K-means algorithm was chosen for this study because it can be applied to both continuous and categorical variables . Before cluster analysis, I standardized the 24 input variables but Child ID for comparability. 
+
+```{r}
+set.seed(20200505)
+parenting_style_kmeans <- kmeans(parenting_scaled,
+                                 centers = 4)
+
+tidy(parenting_style_kmeans) %>%
+  knitr::kable(digits = 2)
+```
+As for the pre-specified k, I determined the initial number by referring to the most well-known typology in the literature as I mentioned above, which is 4. After that, I also tried 3, 5 and 6 centers of cluster to compare the total within sum of square. It can be observed that as the numbers of k increasing, the total within sum of sqaures is decreasing.
+```{r}
+set.seed(20200504)
+parenting_style_kmeans <- kmeans(parenting_scaled,
+                                 centers = 3)
+
+tidy(parenting_style_kmeans) %>%
+  knitr::kable(digits = 2)
+```
+
+```{r}
+set.seed(20200504)
+parenting_style_kmeans <- kmeans(parenting_scaled,
+                                 centers = 5)
+
+tidy(parenting_style_kmeans) %>%
+  knitr::kable(digits = 2)
+```
+
+```{r}
+set.seed(20200504)
+parenting_style_kmeans <- kmeans(parenting_scaled,
+                                 centers = 6)
+
+tidy(parenting_style_kmeans) %>%
+  knitr::kable(digits = 2)
+```
+Finally, to determine the optimal number of k, I used analytical measures including “elbow method”, average silhouette width, and gap statistics that we covered in class. 
+```{r}
+fviz_nbclust(parenting_scaled, FUN=kmeans, method = "wss")
+
+```
+
+```{r}
+fviz_nbclust(parenting_scaled, FUN=kmeans, method = "silhouette")
+
+```
+
+```{r}
+fviz_nbclust(parenting_scaled, FUN=kmeans, method = "gap_stat")
+
+```
+The results show a disparity in the number of k, with “elbow method” suggesting a number of three, the average silhouette width indicating a number of two, and the gap statistics returning an optimal number of ten. 
+
+## References
+Aunola, K., Stattin, H., & Nurmi, J. E. (2000). Parenting styles and adolescents' achievement strategies. Journal of adolescence, 23(2), 205-222.
+Baumrind, D. (1978). Parental disciplinary patterns and social competence in children. Youth
+Soc. 9: 239–276.
+Baumrind, D. (1991). Parenting styles and adolescent development. In Brooks-Gunn, J.,
+Lerner, R., and Peterson, A. C. (eds.), The Encyclopedia of Adolescence, Garland, New
+York, pp. 746–758.
+Grimm, P. (2010). Social desirability bias. Wiley international encyclopedia of marketing.
+Pearson, N., Atkin, A. J., Biddle, S. J., Gorely, T., & Edwardson, C. (2010). Parenting styles, family structure and adolescent dietary behaviour. Public health nutrition, 13(8), 1245-1253.
+Spera, C. (2005). A review of the relationship among parenting practices, parenting styles, and adolescent school achievement. Educational Psychology Review, 17(2), 125–146. https://doi.org/10.1007/s10648-005-3950-1
+Tourangeau, K., Nord, C., Lê, T., Wallner-Allen, K., Vaden-Kiernan, N., Blaker, L. and Najarian, M. (2019). Early Childhood Longitudinal Study, Kindergarten Class of 2010–11 (ECLS-K:2011) User’s Manual for the ECLS-K:2011 Kindergarten–Fifth Grade Data File and Electronic Codebook, Public Version (NCES 2019-051). U.S. Department of Education. Washington, DC: National Center for Education Statistics.
