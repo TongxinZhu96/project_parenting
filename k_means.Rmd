@@ -1,7 +1,6 @@
 ---
-title: "k_means"
+title: "Classification of Parenting Styles and Relationship with Family Characteristics"
 author: "Tongxin Zhu"
-date: "4/26/2020"
 output: html_document
 ---
 ```{r setup, include=FALSE}
@@ -71,6 +70,8 @@ parenting_style_kmeans <- kmeans(parenting_scaled,
 tidy(parenting_style_kmeans) %>%
   knitr::kable(digits = 2)
 ```
+
+
 As for the pre-specified k, I determined the initial number by referring to the most well-known typology in the literature as I mentioned above, which is 4. After that, I also tried 3, 5 and 6 centers of cluster to compare the total within sum of square. It can be observed that as the numbers of k increasing, the total within sum of sqaures is decreasing.
 ```{r}
 set.seed(20200504)
@@ -98,6 +99,8 @@ parenting_style_kmeans <- kmeans(parenting_scaled,
 tidy(parenting_style_kmeans) %>%
   knitr::kable(digits = 2)
 ```
+
+
 Finally, to determine the optimal number of k, I used analytical measures including “elbow method”, average silhouette width, and gap statistics that we covered in class. 
 ```{r}
 fviz_nbclust(parenting_scaled, FUN=kmeans, method = "wss")
@@ -113,6 +116,8 @@ fviz_nbclust(parenting_scaled, FUN=kmeans, method = "silhouette")
 fviz_nbclust(parenting_scaled, FUN=kmeans, method = "gap_stat")
 
 ```
+
+
 The results show a disparity in the number of k, with “elbow method” suggesting a number of three, the average silhouette width indicating a number of two, and the gap statistics returning an optimal number of ten. 
 
 ## References
