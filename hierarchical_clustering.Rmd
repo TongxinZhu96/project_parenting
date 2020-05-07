@@ -17,12 +17,13 @@ library(broom)
 library(tidyr)
 library(cluster)
 library(dendextend)
+library(factoextra)
 ```
 
 ```{r}
 parenting <- read_csv("parenting.csv", col_types = cols(X2TCHCON = col_number(), 
-                                                        X2TCHEXT = col_number(),
-                                                        X2TCHINT = col_number(), 
+                                                        X2REV_EXT = col_number(),
+                                                        X2REV_INT = col_number(), 
                                                         X2TCHPER = col_number()))
 View(parenting)
 ```
@@ -40,6 +41,9 @@ parenting_style <- parenting %>%
 
 ```{r}
 parenting_style_imp <- na.omit(parenting_style)
+
+parenting_scaled <- parenting_style_imp %>%
+  mutate_at(vars(-CHILDID), .funs = ~(.x - mean(.x))/sd(.x))
 ```
 
 
