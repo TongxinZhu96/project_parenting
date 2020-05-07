@@ -63,7 +63,7 @@ parenting_scaled <- parenting_style_imp %>%
 The statistical procedure adopted for this study is cluster analysis, which tries to classify observations into mutually exclusive groups so that the differences within the same group are as small as possible while the differences between groups are as large as possible (Boehmke & Greenwell, 2020).  Several algorithms are available for clustering, and the method used for this paper is K-mean clustering, in which k is a pre-specified number, and means referring to the mean of the observations assigned to the same cluster corresponding to the center of the cluster. K-means algorithm was chosen for this study because it can be applied to both continuous and categorical variables (Coulton, Theodos, & Turner, 2012). Before cluster analysis, I standardized the 24 input variables but Child ID for comparability. 
 
 ```{r}
-set.seed(20200505)
+set.seed(20200504)
 parenting_style_kmeans <- kmeans(parenting_scaled,
                                  centers = 4)
 
@@ -122,14 +122,21 @@ The results show a disparity in the number of k, with “elbow method” suggest
 
 ## References
 Aunola, K., Stattin, H., & Nurmi, J. E. (2000). Parenting styles and adolescents' achievement strategies. Journal of adolescence, 23(2), 205-222.
+
 Baumrind, D. (1978). Parental disciplinary patterns and social competence in children. Youth
 Soc. 9: 239–276.
+
 Baumrind, D. (1991). Parenting styles and adolescent development. In Brooks-Gunn, J.,
 Lerner, R., and Peterson, A. C. (eds.), The Encyclopedia of Adolescence, Garland, New
 York, pp. 746–758.
+
 Boehmke, B., & Greenwell. B. (2020) Hands-On Machine Learning with R: K-means Clustering. https://bradleyboehmke.github.io/HOML/kmeans.html
+
 Coulton, C., Theodos, B., & Turner, M. A. (2012). Residential mobility and neighborhood change: Real neighborhoods under the microscope. Cityscape, 55-89.
+
 Grimm, P. (2010). Social desirability bias. Wiley international encyclopedia of marketing.
+
 Pearson, N., Atkin, A. J., Biddle, S. J., Gorely, T., & Edwardson, C. (2010). Parenting styles, family structure and adolescent dietary behaviour. Public health nutrition, 13(8), 1245-1253.
 Spera, C. (2005). A review of the relationship among parenting practices, parenting styles, and adolescent school achievement. Educational Psychology Review, 17(2), 125–146. https://doi.org/10.1007/s10648-005-3950-1
+
 Tourangeau, K., Nord, C., Lê, T., Wallner-Allen, K., Vaden-Kiernan, N., Blaker, L. and Najarian, M. (2019). Early Childhood Longitudinal Study, Kindergarten Class of 2010–11 (ECLS-K:2011) User’s Manual for the ECLS-K:2011 Kindergarten–Fifth Grade Data File and Electronic Codebook, Public Version (NCES 2019-051). U.S. Department of Education. Washington, DC: National Center for Education Statistics.

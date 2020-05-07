@@ -1,0 +1,185 @@
+---
+title: "Hiearchical Clustering"
+author: "Tongxin Zhu"
+output: html_document
+---
+### Hiearchical Clustering
+The relatively great differences between the optimal numbers of k produced by different analytical measurements suggested that k-means clustering might not be the suitable for classifying parenting styles. Therefore, I tried hierarchical clustering, which is an alternative to k-means for identifying numbers of clusters but doesn’t require a pre-specified k.
+First of all, I started with importing, cleaning, and scaling the data brfore doing clustering analysis.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(quiet = TRUE)
+library(readr)
+library(tidyverse)
+library(broom)
+library(tidyr)
+library(cluster)
+library(dendextend)
+```
+
+```{r}
+parenting <- read_csv("parenting.csv", col_types = cols(X2TCHCON = col_number(), 
+                                                        X2TCHEXT = col_number(),
+                                                        X2TCHINT = col_number(), 
+                                                        X2TCHPER = col_number()))
+View(parenting)
+```
+
+```{r}
+parenting_style <- parenting %>%
+  select(WARMCL_ALWAYS, WARMCL_MOST, WARMCL_SOME, WARMCL_NEVER,
+         LIKE_ALWAYS, LIKE_MOST, LIKE_SOME, LIKE_NEVER,
+         SHOWLV_ALWAYS, SHOWLV_MOST, SHOWLV_SOME, SHOWLV_NEVER,
+         EXPRES_ALWAYS, EXPRES_MOST, EXPRES_SOME, EXPRES_NEVER,
+         P2TVRULE, P2TVRUL3, P2TVRUL2, P2EVSPNK,
+         T2PARIN_NOT, T2PARIN_SOME, T2PARIN_VERY, CHILDID
+         )
+```
+
+```{r}
+parenting_style_imp <- na.omit(parenting_style)
+```
+
+
+Another advantage of hierarchical clustering is that its results can be easily visualized using a dendrogram. In the dendrogram, the height of the branch between an observation and the clusters of observations below them indicate the distance between the observation and that cluster it is joined to (Boehmke & Greenwell, 2020). As I move up the tree, observations that are similar to each other are combined into branches, which are themselves fused at a higher height. That is equivalent to say, as I choose smaller number of clusters, the differences between each clusters are getting smaller as well, because I'm getting much similar observations.
+```{r}
+parenting_matrix <- dist(parenting_scaled,
+                         method = "euclidean")
+
+parenting_hclust <- hclust(d = parenting_matrix,
+                          method = "complete")
+plot(parenting_hclust,
+     cex = 0.6,
+     hang = -1)
+
+```
+
+
+Similar to k-means clustering, I need to choose the optimal number of clusters, even though the dendrogram above has already showed the cluster relationships. I used the same measurements as I did in k-means clustering to see if I can get a more consistent value for the number of clusters. According to the three plots, both “elbow method” and the gap statistics are suggesting three clusters, while the average silhouette width still indicating two clusters, just like the k-means clustering algorithm. It worth mentioning that for the gap statistics method I used a maximum of 6 instead of 10 for k, for the sake of saving time. The plots of “elbow method”  and average silhouette width gave me some confidence to do that since the curves are pretty flat after k reaching five or six.
+
+```{r}
+fviz_nbclust(parenting_scaled, FUN = hcut, method = "wss", k.max = 10)
+```
+
+```{r}
+fviz_nbclust(parenting_scaled, FUN = hcut, method = "silhouette", k.max = 10)
+```
+
+```{r}
+fviz_nbclust(parenting_scaled, FUN = hcut, method = "gap_stat", k.max = 6)
+```
+
+
+Next, I identified three clusters by cutting the dendrogram since I have decided to take 3 as two of the three plots showed above. The three clusters consist of 2,579, 2,307 and 4,010 observations respectively. It’s more imbalanced in terms of the number of observations compared with k-means clustering of 3 centers, which returns three clusters with 2,903, 2,971 and 3,022 observations.
+```{r}
+sub_cluster <- cutree(tree = parenting_hclust,
+       k = 3)
+
+table(sub_cluster)
+```
+
+
+In order to match the children in different clusters to their own characteristics as well as their parent-level and family-level characteristics, I added the the cluster identification number that each observation belongs to to the original data. I also did a quick summary of the number of observations in each cluster after assigning cluster id to ensure that the number before and after are consistent. 
+```{r}
+cluster_id <- parenting_scaled %>%
+    mutate(cluster = sub_cluster)
+table(cluster_id$cluster)
+```
+
+
+After making sure that cluster ID is assigned to each child correctly, I merged the scaled dataset with the original dataset by using the CHILDID variable, which is consistent across all the data frames. 
+```{r}
+merge_id <- merge(cluster_id, parenting, by.x = "CHILDID", by.y = "CHILDID")
+```
+
+
+After making sure that cluster ID is assigned to each child correctly, I merged the scaled dataset with the original dataset by using the CHILDID variable, which is consistent across all the data frames. Having the cluster ID corresponding to characteristics variables, I applied bivariate analyses to see if there are distinguishable differences among the three clusters in terms of my variables of interests. Before doing that, I labeled all the characteristics variables to make the graphs clear.
+```{r}
+merge_id$X_CHSEX_R <- factor(merge_id$X_CHSEX_R,
+                             levels = c(1,2), labels = c("male", "female"))
+merge_id$X_RACETH_R <- factor(merge_id$X_RACETH_R,
+                             levels = c(1,2,3,4,5,6,7,8), 
+                             labels = c("White, non-hispanic", "black/african american",
+                                        "hispanic, race specified","hispanic, no race specified",
+                                        "asian, non-hispanic", "native hawaiian/pacific",
+                                        "american indian/alaska native", "two or more races"))
+merge_id$X12PAR1ED_I <- factor(merge_id$X12PAR1ED_I,
+                               levels = c(1,2,3,4,5,6,7,8), 
+                             labels = c("8th grade or below", "9th - 12th grade",
+                                        "high school diploma/equivalent","voc/tech program",
+                                        "some college", "bachelor's degree",
+                                        "graduate/professional school-no degree", "master's +"))
+merge_id$X1PAR1EMP <- factor(merge_id$X1PAR1EMP,
+                             levels = c(1,2,3,4),
+                             labels = c("35 or more hours per week", 
+                                         "less than 35 hours per week",
+                                         "looking for work", "not in the labor force"))
+merge_id$X2POVTY <- factor(merge_id$X2POVTY,
+                             levels = c(1,2,3),
+                             labels = c("below poverty threshold", 
+                                        "at or above poverty threshold, below 200 percent of poverty threshold",
+                                        "at or above 200 percent of poverty threshold"))
+
+merge_id$P2CURMAR <- factor(merge_id$P2CURMAR,
+                            levels = c(1,2,3,4,5),
+                            labels = c("married","separated", "divorced or widowed", 
+                            "never married", "civil union/domestic partnership"))
+```
+
+```{r}
+ggplot(merge_id, aes(x=X_CHSEX_R))+
+  geom_bar()+
+  facet_wrap(~cluster)
+```
+
+
+```{r}
+ggplot(merge_id, aes(x=X_RACETH_R))+
+  geom_bar()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  facet_wrap(~cluster)
+```
+
+```{r}
+ggplot(merge_id, aes(x=X12PAR1ED_I))+
+  geom_bar()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  facet_wrap(~cluster)
+```
+
+
+```{r}
+ggplot(merge_id, aes(x=X1PAR1EMP))+
+  geom_bar()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  facet_wrap(~cluster)
+```
+
+```{r}
+ggplot(merge_id, aes(x=X2POVTY))+
+  geom_bar()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  facet_wrap(~cluster)
+```
+
+
+```{r}
+ggplot(merge_id, aes(x=P2CURMAR))+
+  geom_bar()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  facet_wrap(~cluster)
+```
+
+
+## Findings
+Based on the bar plots on the distribution of child-level, parent-level and family-level background variables, it’s hard for me to conclude the characteristics of the three clusters or give any proper naming. The only conclusion I can draw is that cluster two is likely to be the category that is driven by parental involvement, since it doesn’t show a disparity between boys and girls. This is also consistent with the descriptive statistics of my thesis that the teacher rated parent involvement frequency distribution are close between boys and girls (with both 15% of boys and girls having uninvolved parents, 44% of boys and 46% of girls having somewhat involved parents, and 40% of boys and 38% of girls having very involved parents). 
+
+However, I don’t have enough evidence or experience to explain or define the other two types of parenting practice. I think the main reason, as well as the greatest limitation for this paper, is that the variables I’m looking for as indicators for different types of parenting styles, are likely to have a weak relationship with the parenting practices. Therefore, these variables didn’t show a significantly different distribution among the three clusters. It’s possible that the variables I chose have some mediating effect and it works through parenting indicators – the ones I used for clustering analysis. But this assumption will need further research and more complicated statistical design.
+
+In line with the dendrogram that as moving up and getting smaller number of clusters, the differences between each cluster are getting smaller as well. My findings might also iterate what the gap statistics plot of k-means clustering indicated. Probably I should have picked k=10 in order to get classifications that are different enough from each other.
+
+## References
+Boehmke, B., & Greenwell. B. (2020) Hands-On Machine Learning with R: K-means Clustering. https://bradleyboehmke.github.io/HOML/hierarchical.html
+Zhang, Wei, Deli Zhao, and Xiaogang Wang. 2013. “Agglomerative Clustering via Maximum Incremental Path Integral.” Pattern Recognition 46 (11). Elsevier: 3056–65.
