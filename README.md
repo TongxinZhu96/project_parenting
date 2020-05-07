@@ -1,6 +1,6 @@
 # Final Project Pages
 
-This is the github page for PPOL 670 final project.
+This is the github page for PPOL 670 final project. In this project, I applied K-means clustering and hierarchical clustering to classify parenting styles. And then explored the relationship between these clusters of parenting types and some child-level, parent-level, and family-level background characteristics.
 
 
 ## Sections
